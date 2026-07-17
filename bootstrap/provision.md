@@ -1,139 +1,94 @@
 # provision — agent prompt for machine setup
 
-Prereqs (the true human-only core, ~5 min): a GitHub account exists and the
-browser is logged into it; Cursor (or any agent runner) is installed and
-signed in. Paste everything below into an agent. You'll be needed three
-times, ~2 minutes total: a sudo/GUI ok for Xcode CLT, running `gh auth login`
-in your own terminal when prompted, and the Bugbot install click.
+Prereqs (human-only, ~5 min): a GitHub account exists and the browser is
+logged into it; Cursor (or any agent runner) is installed and signed in.
+
+Design principle, learned the hard way: **agents must never own work that
+retries, polls, or waits.** Every retry in an agent loop costs an LLM
+round-trip; the same loop in a script costs milliseconds, and interactive
+waits belong to the human. So the mechanical work lives in `install.sh`
+(deterministic, idempotent), the interactive work is yours, and the agent
+only sequences and verifies.
+
+You can skip the agent entirely — the manual path is three commands:
+
+```sh
+~/code/dotfiles/bootstrap/install.sh   # re-run after the CLT dialog if prompted
+~/.local/bin/gh auth login --hostname github.com --git-protocol https --web
+~/code/dotfiles/bootstrap/doctor.sh --fix
+```
+
+…plus the Bugbot app install (https://cursor.com/dashboard → GitHub
+integration). The agent prompt below adds sequencing, verification, and
+Bugbot navigation on top of exactly that path.
 
 ---
 
 ```text
-You are provisioning a fresh macOS machine for development. Work autonomously,
-with exactly two human checkpoints, marked below.
+You are finishing the setup of a fresh macOS machine. The heavy lifting is
+done by scripts and by me — your job is to sequence, verify, and stop at the
+marked checkpoints. HARD RULE: never retry or poll anything. Run each command
+at most once; if it fails or needs waiting, hand it to me with exact
+instructions and wait for my reply.
 
-CONSTRAINTS:
-- No Homebrew, no nvm, no global npm packages
-- Write only to ~/.local, ~/.zshrc, and ~/.gitconfig
-- Ask before running anything with sudo; never store credentials in files
-- Detect the CPU arch (`uname -m`: arm64 vs x86_64) and download accordingly
+CAPABILITY CHECK (silent): note whether you have a browser-control tool
+attached to a browser logged into the intended GitHub account (signed-out
+counts as no). Used only at step 4.
 
-CAPABILITY CHECK (do this first, silently): determine whether you have a
-browser-control tool available (chrome-devtools MCP, Playwright MCP, a
-built-in browser tool, or similar) attached to a browser logged into the
-intended GitHub account. A browser tool that exists but is signed out of
-GitHub counts as BROWSER=no. Set BROWSER=yes/no and use it at step 8.
-Do not install a browser tool to get it — absence is the normal case.
+SETUP: locate the dotfiles checkout (common: ~/code/dotfiles,
+~/.dotfiles — ask me if not found). Call it $DOTFILES.
 
-EXECUTION NOTES:
-- If your harness sandboxes shell commands (restricted network/filesystem),
-  run downloads and `gh auth` with full network access from the start; if a
-  network command fails with Forbidden/EPERM/timeout, retry it unsandboxed
-  ONCE before debugging the command itself.
-- Newly installed binaries are not on PATH yet. Invoke them by absolute path
-  (~/.local/node/bin/npm, ~/.local/bin/gh) until step 4 lands, and export
-  PATH in your own shell session immediately after each install.
+1. Run $DOTFILES/bootstrap/install.sh ONCE.
+   - Exit 0: report the ✓ lines and continue.
+   - Exit 1: it printed a human instruction (usually the Xcode CLT dialog).
+     Relay it verbatim, wait for my "done", run the script ONCE more, then
+     continue. If it fails a second time, stop and show me the output.
 
-TASKS, in order:
-
-1. Xcode command line tools (needed for git):
-   - If `xcode-select -p` succeeds, skip.
-   - Else attempt headless install: create the sentinel file
-     /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress, then
-     `softwareupdate -l` to find the "Command Line Tools" label, then
-     `softwareupdate -i "<label>"` — CHECKPOINT: ask me before sudo if needed.
-   - If that fails, run `xcode-select --install` and tell me to click the
-     dialog; poll `xcode-select -p` until it succeeds.
-
-2. Node LTS (v22), no sudo:
-   - Download the official tarball for this arch from
-     https://nodejs.org/dist/latest-v22.x/ (darwin-arm64 or darwin-x64),
-     extract to ~/.local/node, symlink node/npm/npx into ~/.local/bin.
-
-3. GitHub CLI, no sudo:
-   - Download the latest macOS release from
-     https://github.com/cli/cli/releases/latest — NOTE: macOS assets ship as
-     .zip (gh_<ver>_macOS_arm64.zip or _amd64.zip), not .tar.gz. Discover the
-     exact asset name from the release JSON
-     (https://api.github.com/repos/cli/cli/releases/latest) rather than
-     guessing it. Unzip, put bin/gh in ~/.local/bin.
-
-4. PATH: ensure ~/.zshrc has `export PATH="$HOME/.local/bin:$PATH"` (append
-   once, idempotently). Use the full path for this session.
-
-5. GitHub auth — HUMAN-RUN, do not attempt `gh auth login` yourself. The
-   login command is a long-polling interactive process that dies in agent
-   harnesses (timeouts, sandboxes, no TTY), stranding the device code.
-   - First check `~/.local/bin/gh auth status` — the machine may already be
-     authed; if so, report the username and skip ahead.
-   - Otherwise CHECKPOINT — print this for me and wait:
-     "In YOUR OWN terminal (Terminal.app, not me), run:
+2. CHECKPOINT — GitHub auth (mine, not yours; the login command is
+   interactive and long-polling, it will die in your harness):
+   - First run `~/.local/bin/gh auth status`. Already authed → report the
+     username, skip to 3.
+   - Otherwise print:
+     "In YOUR OWN terminal, run:
         ~/.local/bin/gh auth login --hostname github.com --git-protocol https --web
-      Follow its prompts: it shows a code, opens/points you to
-      https://github.com/login/device, and finishes when you authorize in a
-      browser logged into the INTENDED account. Reply 'done' here after it
-      reports success."
-   - After I confirm, verify with `gh auth status` and report the username.
-     If it's not the account I expect, I'll say so — instruct me to run
-     `gh auth logout` and repeat.
+      Complete it in a browser logged into the INTENDED account, then reply
+      'done'."
+   - After my reply, run `gh auth status` ONCE and report the username. Not
+     the expected account → tell me to `gh auth logout` and redo; do not
+     loop on my behalf.
 
-6. Git identity, derived from the session (never ask me to type an email):
-   - user.name = the gh username
-   - user.email = <id>+<username>@users.noreply.github.com via `gh api user --jq .id`
+3. Run $DOTFILES/bootstrap/doctor.sh --fix ONCE. Exit 0 → report the
+   summary. Nonzero → show me the ✗ lines and their fix hints verbatim;
+   do NOT attempt the fixes yourself unless I say so.
 
-7. Verify: locate doctor.sh in the dotfiles checkout this prompt came from
-   (common locations: ~/code/dotfiles/bootstrap/doctor.sh,
-   ~/.dotfiles/bootstrap/doctor.sh — ask me for the path if you can't find
-   it). Run it and iterate until exit 0. If it doesn't exist on this
-   machine, re-check each item above and summarize.
-
-8. Bugbot / Cursor GitHub App (no API exists for user-level app installs):
-   - If BROWSER=yes: navigate https://cursor.com/dashboard → Bugbot / GitHub
-     integration → start the Cursor GitHub App install for the account gh
-     is authed as, select all repositories, and proceed to the final
-     grant screen — then STOP and tell me to review the permissions and
-     click Install myself. Hand control to me on any re-auth prompt.
-   - If BROWSER=no: print this instruction block for me:
+4. Bugbot / Cursor GitHub App (no API for user-level app installs):
+   - Browser tool available: navigate https://cursor.com/dashboard →
+     Bugbot / GitHub integration → proceed to the app-install grant screen,
+     then STOP — I review the permissions and click Install. Yield to me on
+     any password/2FA prompt.
+   - No browser tool: print:
      "Open https://cursor.com/dashboard → Bugbot / GitHub integration →
-      Install the Cursor GitHub App, choosing the account gh is authed as.
-      Grant all repositories (or add each repo later). Docs:
-      https://cursor.com/docs/bugbot"
-   - Either way, note in the final report that the install is only truly
-     verified by a smoke PR on the first real repo.
+      Install the Cursor GitHub App for the account gh is authed as.
+      Docs: https://cursor.com/docs/bugbot"
 
-FINAL REPORT: versions installed (node, gh, git), gh username, git identity,
-doctor.sh result, and any step skipped or improvised.
+FINAL REPORT: node/gh/git versions, gh username, git identity, doctor.sh
+result, and anything skipped. Note that the Bugbot install is only truly
+verified by a smoke PR on the first real repo (new-project.md does this).
 ```
 
 ---
 
-## How the browser handling works
+## Division of labor, and why
 
-The prompt assumes NO browser tool — that's the normal case, and step 8
-degrades to printing precise human instructions. If a browser MCP
-(chrome-devtools-mcp, Playwright MCP, Cursor's browser control, Claude in
-Chrome) happens to be attached to a profile logged into the intended account,
-the agent detects it up front and drives the Bugbot navigation itself, with
-two deliberate limits baked into the prompt:
-
-1. **The final grant click is always yours.** The agent stops at the
-   authorize/install screen so you read the scopes before approving —
-   OAuth grants are the category of action to review, not delegate.
-2. **Re-auth hands control back.** GitHub often triggers sudo-mode
-   (password/2FA) exactly on those screens; the agent is told to yield
-   rather than attempt credentials, which it should never have.
-
-## What remains genuinely human, and why
-
-- **GitHub account creation + 2FA** — CAPTCHA, email verification, and 2FA
-  enrollment; also not something to delegate to an agent regardless of tooling.
-- **Installing + signing into Cursor** — the bootstrap paradox: something has
-  to run the first agent.
-- **Running `gh auth login` in your own terminal** — learned the hard way:
-  it's a long-polling interactive command built for a human TTY. Agent
-  harnesses kill it (timeouts, sandboxes, no real TTY), stranding the device
-  code. The agent verifies the result; the human runs the command. ~60s.
-- **A sudo/GUI ok for Xcode CLT** and the Bugbot app-install click (agent
-  can navigate up to the grant screen with a browser tool; the click is yours).
-- Either way, the smoke PR in new-project.md is the ground-truth check that
-  the app install actually worked.
+- **install.sh (script)** — downloads, extraction, PATH, arch detection.
+  Deterministic and idempotent; a failed download retried by a script costs
+  milliseconds, retried by an agent costs a narrated round-trip. Re-running
+  it is always safe.
+- **Human** — everything interactive or CAPTCHA'd: account creation + 2FA,
+  the CLT dialog click, `gh auth login` (long-polling, needs a real TTY),
+  the Bugbot grant click. Each is under a minute.
+- **Agent** — sequencing, relaying instructions at the right moment,
+  one-shot verification (`gh auth status`, doctor.sh), and browser
+  navigation up to — never through — grant screens.
+- **Ground truth** — the smoke PR in new-project.md proves the whole chain
+  (CI + Bugbot) actually works.

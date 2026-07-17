@@ -10,8 +10,8 @@ Only the genuinely non-delegable core:
 - GitHub account (if a fresh identity): [github.com/signup](https://github.com/signup), then enable 2FA at [github.com/settings/security](https://github.com/settings/security) — CAPTCHA and authenticator enrollment. Stay logged in; the browser session is the identity everything else derives from.
 - Install Cursor from [cursor.com/download](https://cursor.com/download) and sign in — the bootstrap paradox: something has to run the first agent.
 
-**2. Provision pass (once per machine): paste `provision.md` into an agent.**
-The agent installs Node and gh from official releases into `~/.local` (no sudo, no Homebrew), attempts a headless Xcode CLT install, derives git identity from the gh session, tees up the Bugbot app-install URL, and verifies with `doctor.sh`. You're needed three times, ~2 minutes total: one sudo/GUI ok, running `gh auth login` in your own terminal when the agent prompts you (deliberately human-run — it's a long-polling interactive command that dies in agent harnesses), and the app-install click (agent can navigate you there with a browser MCP; the grant click stays yours).
+**2. Provision pass (once per machine): scripts do the work, humans do the waiting.**
+Design rule: agents never own anything that retries, polls, or waits — script loops cost milliseconds, agent loops cost narrated LLM round-trips. So `install.sh` (idempotent, no sudo) installs Node + gh into `~/.local` and configures PATH; you run `gh auth login` in your own terminal (interactive by design) and click the CLT dialog and Bugbot grant screen. Run the three-command manual path at the top of `provision.md` yourself, or paste `provision.md` into an agent to get sequencing, one-shot verification, and Bugbot navigation on top — same steps either way.
 
 `doctor.sh` also stands alone — rerun it anytime:
 
@@ -30,8 +30,9 @@ Open `new-project.md`, fill in the header block (name, visibility, stack, invari
 ```
 bootstrap/
   README.md          this file
-  doctor.sh          machine preflight
-  provision.md       agent prompt: machine setup (tools + auth)
+  install.sh         deterministic toolchain install (node, gh, PATH)
+  doctor.sh          machine preflight / verification
+  provision.md       machine setup: manual 3-command path + agent wrapper
   new-project.md     agent prompt: new repo (scaffold + CI + smoke PR)
 cursor/
   rules/base.md      generic project rules (agent fills the invariants slot)
@@ -44,5 +45,5 @@ templates/
 
 - Private repos by default. Costs versus public: metered Actions minutes (~2,000/mo free — plenty), Bugbot on trial/paid rather than free tier, and rulesets unenforced without GitHub Pro (see "Private repo notes" in new-project.md). Flip VISIBILITY to public to get all three free.
 - HTTPS remotes via gh's credential helper; never SSH keys
-- One branch = one concern = one PR; CI required on main via ruleset
+- One branch = one concern = one PR; CI runs on every PR (merge-gate ruleset is opt-in via the RULESET flag — solo/sprint repos skip it)
 - Commit `.cursor/` into each project so every agent (and teammate) shares conventions
