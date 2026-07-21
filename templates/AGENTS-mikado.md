@@ -64,6 +64,13 @@ When an agent discovers a hidden prerequisite (in-branch or cross-branch):
 - Never have two agents active above a convergence point.
 - Convergence nodes are where separately built pieces meet a shared contract — they should carry **conformance/contract tests** proving all implementations honor the trunk interface.
 
+#### Scaling beyond 2–3 agents
+
+- **Parallelism is an output of planning, not an input.** Spawn one agent per *genuinely disjoint* subtree; never split branches to hit a target agent count. Codebase hotspots (DI wiring, route tables, config, lockfiles) cap useful parallelism — if two candidate branches share a hotspot, they're one branch.
+- **Keep nodes small so the merge queue cycles fast.** Every merge to main obsoletes all other agents' bases; cheap rebases only stay cheap if PRs stay small. The bottleneck at high agent counts is PR review throughput — don't add agents past what review can absorb.
+- **Nested convergences need survivors named up front.** With many branches, convergence is usually staged (A+B→C1, D+E→F1, C1+F1→G). The collapse plan must name the surviving agent *per convergence node*, or two survivors will both claim the upper graph.
+- **Optional conflict hardening:** add `MIKADO.md merge=union` to `.gitattributes` to eliminate status-table conflicts entirely (safe only because agents edit exactly their own single-line row).
+
 ### 4. PR requirements
 
 Every PR description MUST include:
