@@ -6,6 +6,20 @@
 
 When planning any non-trivial change, use the Mikado Method: build a dependency graph, work from the leaves, and parallelize across independent branches.
 
+### 0. Design decisions before decomposition
+
+Before drawing any tree, enumerate the load-bearing design decisions in a
+**"Design decisions"** section at the top of `MIKADO.md`: data model, error &
+status conventions, where config/secrets come from, external dependencies,
+storage of any shared state. Each decision creates or dissolves cross-branch
+edges — most hidden edges discovered mid-flight trace back to a decision nobody
+wrote down (e.g. "where do auth tokens live?" decides whether auth depends on
+persistence). An undecided item is a planning blocker, not a TODO.
+
+For high-uncertainty areas, prefer a **throwaway spike first** to discover the
+real prerequisite structure, then plan; and mark exploratory nodes with a
+**risk flag** in the node table so they're sequenced early or conservatively.
+
 ### 1. Build the graph
 
 - The **root** is the goal (the user's requested outcome).
@@ -13,6 +27,8 @@ When planning any non-trivial change, use the Mikado Method: build a dependency 
 - Recurse until every **leaf** is a task that can be done *right now* with no unmet prerequisites.
 - The structure is tree-*like* but is really a **DAG**: a node may have prerequisites in more than one branch (cross-branch edges). Record every edge you know of; hunt for shared prerequisites explicitly during planning — especially interfaces/contracts that multiple branches will build against.
 - **Trunk-first**: any node that ≥2 branches depend on (shared interfaces, protocols, schemas, contracts) is a **trunk node**. Trunk nodes merge *before* parallel agents spin up. This prevents agents from blocking mid-branch on another branch's work.
+- **Contracts specify failure modes, not just signatures.** A trunk contract must pin error cases: status codes, error-body shapes, null/edge behavior, and (where relevant) a reusable conformance test that implementations must pass. Happy-path-only contracts let parallel branches silently diverge and collide at convergence.
+- **Contract freeze:** once a trunk contract merges, changing it requires a plan-revision PR that names every dependent branch — never a quiet edit inside a node PR.
 - True to Mikado: if you start a node and discover a hidden prerequisite, don't push through — add the edge/node to the graph, park the blocked work, and do the prerequisite first. The graph is a living document; update it as reality corrects the plan.
 
 #### Node requirements
@@ -22,6 +38,7 @@ Every node MUST be:
 - **Discrete & individually deliverable** — lands on main by itself, leaves the codebase green (builds, tests pass) even if the parent goal isn't reached yet. Use feature flags, parallel implementations, or expand/contract patterns when needed to keep intermediate states shippable.
 - **One reviewable PR** — target roughly ≤400 changed lines and a single conceptual change. If a node can't yield a small PR, split it into child nodes.
 - **Independent within its branch** — nodes on *different* branches must not touch the same files/modules wherever possible. If two nodes must touch the same area, they belong on the same branch (sequenced), not on parallel branches. Minor overlap is acceptable only when merge conflicts would be trivial.
+- **Explicit acceptance criteria** — every node's table row includes a one-line done-condition ("done when: \<observable behavior or named test passes\>"). If you can't write one, the node isn't individually deliverable — split or restructure it.
 
 ### 2. Persist the graph
 
@@ -103,13 +120,22 @@ Legend convention: green = merged, yellow = **this PR**, grey = pending.
 
 When asked to plan, produce before any implementation:
 
+- [ ] Design-decisions section (§0) — all load-bearing choices written down and decided
 - [ ] Mermaid graph with stable node IDs, including all known cross-branch edges
 - [ ] Trunk nodes identified (shared interfaces/contracts) and sequenced before parallel work
-- [ ] Node table (ID, description, files/modules touched, est. PR size) — one line per node
+- [ ] Node table (ID, description, files/modules touched, acceptance criterion, risk flag, est. PR size) — one line per node
 - [ ] Branch → agent assignment with explicit file boundaries per branch
 - [ ] Convergence nodes identified, with collapse plan (which agent survives) and contract tests planned
 - [ ] `MIKADO.md` created/updated
 
-### 6. Approval gate — no execution without sign-off
+### 6. Red-team pass, then approval gate
 
-After planning, **stop**. Present in chat: the Mermaid graph, the node table, and the branch → agent assignments. Do NOT create worktrees, spawn agents, or start any node until the user approves the plan. If the user requests changes, revise and re-present. The same gate applies to plan revisions that restructure branches or change agent assignments (discovered-edge bookkeeping inside a node PR is exempt).
+**Red-team the plan before presenting it.** Mechanically verify:
+
+- [ ] For each parallel branch, list every file it will touch; confirm the sets are pairwise disjoint (or overlap is trivially mergeable and justified).
+- [ ] For each node, re-hunt prerequisites: what will its code import/read that isn't merged before it starts? Any hit = missing edge.
+- [ ] Every design decision in §0 is actually decided — no "TBD" that a branch silently resolves on its own.
+- [ ] Every node has an acceptance criterion and every trunk contract specifies failure modes.
+- [ ] Convergence nodes are single-concept (wire OR guard OR docs) — a convergence PR that does three things is three nodes.
+
+**Then stop.** Present in chat: the Mermaid graph, the node table (with acceptance criteria), the branch → agent assignments, and anything the red-team pass changed. Do NOT create worktrees, spawn agents, or start any node until the user approves the plan. If the user requests changes, revise and re-present. The same gate applies to plan revisions that restructure branches or change agent assignments (discovered-edge bookkeeping inside a node PR is exempt).
