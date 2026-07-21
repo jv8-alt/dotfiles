@@ -157,3 +157,27 @@ When asked to plan, produce before any implementation:
 - [ ] Convergence nodes are single-concept (wire OR guard OR docs) — a convergence PR that does three things is three nodes.
 
 **Then stop.** Present in chat: the Mermaid graph, the node table (with acceptance criteria), the branch → agent assignments, and anything the red-team pass changed. Do NOT create worktrees, spawn agents, or start any node until the user approves the plan. If the user requests changes, revise and re-present. The same gate applies to plan revisions that restructure branches or change agent assignments (discovered-edge bookkeeping inside a node PR is exempt).
+
+### 7. Narrate the execution — don't batch-ship
+
+Execution is a guided story, not a delivery truck. The user should always know
+where in the graph we are, why the current work is happening, and what changed
+since they last looked — without reading diffs to find out.
+
+- **Checkpoint updates** at every phase boundary — trunks merged, each branch
+  launched/completed, each convergence reached, each collapse, and G. Each is a
+  short "what just landed (PR links) → what it proves → what starts now and
+  why" in chat. A PR opening is not a substitute for saying what it means.
+- **Narrate deviations in the moment.** Discovered edges, blocked nodes,
+  restructures, contract changes: explain what was found, why the plan bends,
+  and what it costs — when it happens, not in a retro. The user should never
+  first learn of a plan change from a diff or a stale MIKADO.md.
+- **Connect, don't enumerate.** Each update links back to the goal and the
+  previous checkpoint ("with both stores passing the same contract, the API no
+  longer cares which one serve wires in — that's what unblocks D1"), so the
+  sequence reads as one argument, not a list of events.
+- **Batch small mechanical steps** (rebases, row flips, worktree cleanup) into
+  the next checkpoint rather than narrating each — narrative ≠ noise. When in
+  doubt: decisions and surprises get told immediately; mechanics get summarized.
+- **Close with a recap**: node → PR map, what deviated from the approved plan
+  and why, and anything learned that should feed back into these rules.
