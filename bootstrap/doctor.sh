@@ -72,6 +72,24 @@ else
   printf '  \033[33m-\033[0m cursor CLI not on PATH (install from Cursor: Cmd+Shift+P → "Install '\''cursor'\'' command")\n'
 fi
 
+if command -v starship >/dev/null 2>&1; then
+  pass "starship prompt ($(starship --version | head -1 | awk '{print $2}'))"
+else
+  printf '  \033[33m-\033[0m starship prompt not installed — run: ./shell.sh\n'
+fi
+
+if ls "$HOME/Library/Fonts" 2>/dev/null | grep -qi "JetBrainsMonoNerdFont"; then
+  pass "JetBrainsMono Nerd Font installed"
+else
+  printf '  \033[33m-\033[0m Nerd Font not installed — run: ./shell.sh (then set it in Terminal.app ▸ Preferences ▸ Profiles)\n'
+fi
+
+if [ -d "$HOME/.local/share/zsh/plugins/zsh-autosuggestions" ] && [ -d "$HOME/.local/share/zsh/plugins/zsh-syntax-highlighting" ]; then
+  pass "zsh-autosuggestions + zsh-syntax-highlighting installed"
+else
+  printf '  \033[33m-\033[0m zsh plugins not installed — run: ./shell.sh\n'
+fi
+
 echo
 if [ "$bad" -eq 0 ]; then
   echo "ready: $ok checks passed"

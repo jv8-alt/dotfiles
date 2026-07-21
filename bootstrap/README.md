@@ -22,6 +22,8 @@ Design rule: agents never own anything that retries, polls, or waits — script 
 
 Idempotent, read-only unless `--fix`. Exit code 0 = machine ready.
 
+**Optional, anytime: `shell.sh` — pretty prompt.** Same idempotent/no-sudo pattern as `install.sh`, but purely cosmetic so it's not part of the numbered passes. Installs Starship (prompt) + JetBrainsMono Nerd Font + zsh-autosuggestions + zsh-syntax-highlighting, all into `~/.local` / `~/Library/Fonts`, and writes `~/.config/starship.toml` with a GitHub icon segment (shows `org/repo` when the current repo's remote is GitHub). Never overwrites an existing `starship.toml`. One manual step it can't script: set the Nerd Font in Terminal.app ▸ Preferences ▸ Profiles ▸ Font. `doctor.sh` reports its status (optional, non-blocking) in the "optional" section.
+
 **3. Project pass (once per project): paste `new-project.md` into an agent.**
 Open `new-project.md`, fill in the header block (name, visibility, stack, invariants), paste the whole thing into an agent. It scaffolds, creates the repo, wires CI from `../templates/`, seeds `.cursor/` from `../cursor/`, and ends with an **unmerged** smoke PR — the artifact you use to verify CI ran and Bugbot commented, since the bot install is the one thing an agent can't check.
 
@@ -31,6 +33,7 @@ Open `new-project.md`, fill in the header block (name, visibility, stack, invari
 bootstrap/
   README.md          this file
   install.sh         deterministic toolchain install (node, gh, PATH)
+  shell.sh           optional: pretty prompt (starship, nerd font, zsh plugins)
   doctor.sh          machine preflight / verification
   provision.md       machine setup: manual 3-command path + agent wrapper
   new-project.md     agent prompt: new repo (scaffold + CI + smoke PR)
