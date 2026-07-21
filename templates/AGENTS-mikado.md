@@ -90,9 +90,20 @@ When an agent discovers a hidden prerequisite (in-branch or cross-branch):
 
 ### 4. PR requirements
 
-Every PR description MUST include:
+A node PR description is **first a normal, excellent PR description, second a
+Mikado artifact** — a reviewer who has never seen MIKADO.md must be able to
+review the PR from its description alone. Lead with the delivery; the plan
+context comes after, under a divider.
 
-1. **Graph diagram** (Mermaid, snapshot as of this PR) with this PR's node visually marked and merged nodes styled differently:
+**Part 1 — the delivery (lead with this):**
+
+1. **What changed & why** — 2–5 sentences in plain language: the behavior/capability this PR adds, the approach taken, and any non-obvious implementation choice worth a reviewer's attention. Written for someone reviewing the diff, not someone auditing the plan.
+2. **How to verify** — the command(s) to run and what output proves it works (test names count); note anything intentionally NOT covered yet and which node covers it.
+3. **Acceptance criterion** — quote the node's "done when" from MIKADO.md and state plainly that/how it's met.
+
+**Part 2 — Mikado context (after a `---` divider):**
+
+4. **Graph diagram** (Mermaid, snapshot as of this PR) with this PR's node visually marked and merged nodes styled differently:
 
 ```mermaid
 flowchart BT
@@ -111,10 +122,11 @@ flowchart BT
 
 Legend convention: green = merged, yellow = **this PR**, grey = pending.
 
-2. **Position statement**, one line: `Branch B, node B2 — 2nd of 2 nodes on this branch. Feeds convergence node C1 (also fed by branch A).`
-3. **Deliverable statement**: what this PR delivers standalone and why the codebase is safe/green with only this merged.
-4. **Unblocks**: which node(s) this merge unblocks, and whether it completes a feeder into a convergence node (triggering agent collapse).
-5. **`MIKADO.md` row update**: this node's row flipped to `done` + PR link (same PR).
+5. **Position statement**, one line: `Branch B, node B2 — 2nd of 2 nodes on this branch. Feeds convergence node C1 (also fed by branch A).`
+6. **Unblocks**, one line: which node(s) this merge unblocks, and whether it completes a feeder into a convergence node (triggering agent collapse).
+7. **`MIKADO.md` row update**: this node's row flipped to `done` + PR link (same PR).
+
+Balance check before opening the PR: if Part 2 is longer than Part 1 (diagram excluded), Part 1 is underwritten — a reviewer should never have to reverse-engineer the change from the plan.
 
 ### 5. Planning output checklist
 
