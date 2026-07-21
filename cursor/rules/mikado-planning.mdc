@@ -75,6 +75,12 @@ When an agent discovers a hidden prerequisite (in-branch or cross-branch):
 - Rebase on latest `main` before opening each PR and rerun tests; merges to main are serialized.
 - On agent collapse (below), remove dead agents' worktrees (`git worktree remove`); the surviving agent continues in its own.
 
+### Stacked node PRs (within a branch only)
+
+- **Within a branch, stacking is encouraged when review latency is the bottleneck:** base node N+1's PR on node N's branch (`mikado/A2` targets `mikado/A1`), so the agent can pipeline — start A2 while A1 is in review — and each PR shows only its own node's diff. GitHub retargets the stacked PR to `main` automatically when its base merges; rebase and rerun tests at that point.
+- **Never stack across branches.** Cross-branch stacking recreates exactly the coupling the graph exists to remove, and convergence nodes can't stack on multiple parents anyway — they start from `main` after their feeders merge.
+- Default remains sequential-on-main (open node N+1 after N merges) — simpler, and fine when reviews are fast.
+
 ### Convergence & collapse
 
 - A **convergence node** is a node fed by more than one branch.
@@ -121,7 +127,7 @@ flowchart BT
     classDef default fill:#eee,color:#333
 ```
 
-Legend convention: green = merged, yellow = **this PR**, grey = pending.
+**Color semantics — role in the border, status in the fill (never mix the two):** borders are stable roles — blue = trunk, purple = convergence, crimson = goal; fills are live status — grey = pending, green = merged, yellow = **this PR**. A merged trunk node is blue-border + green-fill; the goal keeps its crimson border and only fills green when G itself merges. (This prevents the goal looking "done" from day one.)
 
 5. **Position statement**, one line: `Branch B, node B2 — 2nd of 2 nodes on this branch. Feeds convergence node C1 (also fed by branch A).`
 6. **Unblocks**, one line: which node(s) this merge unblocks, and whether it completes a feeder into a convergence node (triggering agent collapse).
