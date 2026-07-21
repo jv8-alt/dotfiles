@@ -109,3 +109,7 @@ When asked to plan, produce before any implementation:
 - [ ] Branch → agent assignment with explicit file boundaries per branch
 - [ ] Convergence nodes identified, with collapse plan (which agent survives) and contract tests planned
 - [ ] `MIKADO.md` created/updated
+
+### 6. Approval gate — no execution without sign-off
+
+After planning, **stop**. Present in chat: the Mermaid graph, the node table, and the branch → agent assignments. Do NOT create worktrees, spawn agents, or start any node until the user approves the plan. If the user requests changes, revise and re-present. The same gate applies to plan revisions that restructure branches or change agent assignments (discovered-edge bookkeeping inside a node PR is exempt).
