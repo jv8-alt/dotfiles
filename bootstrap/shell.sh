@@ -72,7 +72,7 @@ else
 "$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
-[](fg:#89b4fa)$directory[](fg:#89b4fa bg:#a6e3a1)\
+$directory[](fg:#89b4fa bg:#a6e3a1)\
 ${custom.github}$git_branch$git_status[](fg:#a6e3a1)
 $character"""
 
