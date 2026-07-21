@@ -74,6 +74,23 @@ When an agent discovers a hidden prerequisite (in-branch or cross-branch):
 - Rebase on latest `main` before opening each PR and rerun tests; merges to main are serialized.
 - On agent collapse (below), remove dead agents' worktrees (`git worktree remove`); the surviving agent continues in its own.
 
+#### Review & merge policy — the user merges, never the agent
+
+- Agents **open** PRs; they never approve their own PRs, never merge, and never
+  enable auto-merge. Opening the PR ends the node: post the checkpoint update
+  (§7) with the PR link and what to look at, then wait.
+- The user's PR review is the standing control point of this workflow —
+  the §6 gate approves the *plan* once; review approves each *increment*.
+  Bypassing it converts "reviewable PRs" into an unread changelog.
+- While waiting, an agent may start its **next node stacked** on the pending one
+  (see below) but nothing it builds may merge ahead of its base.
+- If several PRs are awaiting review, present them as a short review queue
+  (node, PR link, one-line what-it-does, suggested order) rather than pinging
+  one at a time.
+- **Explicit opt-in exception only:** the user may pre-authorize auto-merge for
+  a named class of PRs (e.g. "auto-merge green trunk PRs"). Scope it narrowly,
+  record the authorization in MIKADO.md, and never infer it from silence.
+
 #### Stacked node PRs (within a branch only)
 
 - **Within a branch, stacking is encouraged when review latency is the bottleneck:** base node N+1's PR on node N's branch (`mikado/A2` targets `mikado/A1`), so the agent can pipeline — start A2 while A1 is in review — and each PR shows only its own node's diff. GitHub retargets the stacked PR to `main` automatically when its base merges; rebase and rerun tests at that point.
