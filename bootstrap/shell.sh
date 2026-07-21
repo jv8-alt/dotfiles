@@ -53,6 +53,16 @@ else
 fi
 
 # 4. starship.toml — git status + GitHub icon, only written if absent (never overwrite edits)
+#    Icon code points used below (all verified present via
+#    https://github.com/ryanoasis/nerd-fonts/wiki/Glyph-Sets-and-Code-Points):
+#      U+E0B0 — Powerline separator triangle (Powerline set, e0a0-e0a2/e0b0-e0b3, always bundled)
+#      U+E709 — GitHub mark (Devicons set, e700-e8ef)
+#      U+E725 — git-branch (Devicons set, e700-e8ef)
+#    Do NOT use Font Awesome's old "github" glyph (historically U+F09B) — FA brand icons were
+#    dropped from Nerd Fonts (the ed00-f2ff range ships "with two gaps"), so it renders as nothing.
+#    Private-Use-Area glyphs typed directly into a shell/editor session can silently vanish in
+#    some text pipelines; if you're hand-editing this, build them from verified code points via
+#    `python3 -c "print(chr(0xE709))"` rather than pasting the character.
 CONFIG="$HOME/.config/starship.toml"
 if [ -f "$CONFIG" ]; then
   echo "✓ ~/.config/starship.toml already exists (not overwritten)"
@@ -62,8 +72,8 @@ else
 "$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
-[](fg:#89b4fa)$directory[](fg:#89b4fa bg:#a6e3a1)\
-${custom.github}$git_branch$git_status[](fg:#a6e3a1)
+[](fg:#89b4fa)$directory[](fg:#89b4fa bg:#a6e3a1)\
+${custom.github}$git_branch$git_status[](fg:#a6e3a1)
 $character"""
 
 add_newline = true
@@ -77,13 +87,13 @@ truncate_to_repo = true
 [custom.github]
 command = "git config --get remote.origin.url 2>/dev/null | sed -E 's#\\.git$##; s#.*[:/]([^/]+/[^/]+)$#\\1#'"
 when = "git remote get-url origin 2>/dev/null | grep -q github.com"
-symbol = ""
+symbol = ""
 style = "bg:#a6e3a1 fg:#1e1e2e bold"
 format = "[ $symbol $output]($style)"
 shell = ["bash", "--noprofile", "--norc"]
 
 [git_branch]
-symbol = " "
+symbol = " "
 style = "bg:#a6e3a1 fg:#1e1e2e bold"
 format = "[ $symbol$branch]($style)"
 
@@ -108,12 +118,6 @@ error_symbol = "[❯](bold red)"
 [cmd_duration]
 format = "took [$duration]($style) "
 style = "yellow"
-
-[nodejs]
-symbol = " "
-
-[package]
-symbol = " "
 EOF
   echo "✓ ~/.config/starship.toml written"
 fi
