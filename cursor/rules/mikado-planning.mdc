@@ -30,7 +30,7 @@ real prerequisite structure, then plan; and mark exploratory nodes with a
 - **Trunk-first**: any node that ≥2 branches depend on (shared interfaces, protocols, schemas, contracts) is a **trunk node**. Trunk nodes merge *before* parallel agents spin up. This prevents agents from blocking mid-branch on another branch's work.
 - **Contracts specify failure modes, not just signatures.** A trunk contract must pin error cases: status codes, error-body shapes, null/edge behavior, and (where relevant) a reusable conformance test that implementations must pass. Happy-path-only contracts let parallel branches silently diverge and collide at convergence.
 - **Contract freeze:** once a trunk contract merges, changing it requires a plan-revision PR that names every dependent branch — never a quiet edit inside a node PR.
-- True to Mikado: if you start a node and discover a hidden prerequisite, don't push through — add the edge/node to the graph, park the blocked work, and do the prerequisite first. The graph is a living document; update it as reality corrects the plan.
+- True to Mikado: the plan is a hypothesis and **attempts are how the graph learns**. If you start a node and discover a hidden prerequisite, don't push through — run the discovery loop (§3): revert clean, record the edge, probe recursively, reshape if needed. The graph is a living document; update it as reality corrects the plan.
 
 ### Node requirements
 
@@ -59,13 +59,38 @@ Every node MUST be:
 - An agent NEVER starts a node until **all its prerequisite nodes are merged — including cross-branch prerequisites**.
 - An agent stays inside its branch's file boundary. If it must touch another branch's territory, the graph is wrong: restructure (usually merge the two branches into one sequenced branch) via a plan-revision PR.
 
-### Blocked-node protocol
+### The discovery loop — attempt → revert → record → recurse → reshape
 
-When an agent discovers a hidden prerequisite (in-branch or cross-branch):
+This is the core Mikado move, not an error path. Discovering a hidden
+prerequisite mid-node means the method is working.
 
-1. Park the blocked node; don't half-finish it.
-2. If another node in your branch is available, work that; otherwise wait.
-3. Record the discovered edge in `MIKADO.md` as part of your node's eventual PR — or, if it changes branch assignments, as a small immediate **plan-revision PR**.
+1. **Attempt honestly.** Start the node as planned; let the code tell you what's
+   missing. Timebox it — if you're fighting the codebase, that's the signal.
+2. **Revert clean — don't nurse half-work.** Commit nothing from the failed
+   attempt to the node branch; `git reset --hard` back to a clean state. You may
+   keep the attempt in a scratch stash/branch *for reference*, but the node
+   restarts from clean once its prerequisites are met — half-finished work
+   carried forward is how graphs rot.
+3. **Record what reality taught you.** Add the discovered node/edge to
+   `MIKADO.md` with a one-line note of what the attempt revealed ("SqliteStorage
+   can't type against a protocol that doesn't exist yet") — the edge's *reason*
+   is as valuable as the edge.
+4. **Recurse before resuming.** The discovered prerequisite may itself have
+   hidden prerequisites. Probe it the cheap way first (what does it import,
+   touch, or assume that isn't merged?); if still uncertain, spend a timeboxed
+   spike. Walk down until you hit a true leaf — one revert per level beats
+   discovering the chain one failed PR at a time.
+5. **Reshape the graph.** Classify the discovered prerequisite and act:
+   - **Mine** (inside my branch's boundary) → insert it into my branch sequence
+     as a new node before the blocked one; note it in my next PR.
+   - **Another branch's territory** → record the cross-branch edge; work another
+     available node in my branch or wait for that branch to merge it. Never
+     reach across the boundary and build it myself.
+   - **Shared / contract-shaped** (≥2 branches will need it) → a trunk node
+     discovered late. Pause affected branches and raise a **plan-revision PR**;
+     if branch assignments or boundaries change, it re-triggers the §6 gate.
+6. **Narrate it** (§7): what was attempted, what it revealed, what was reverted,
+   how the graph changed — in the moment, not in a retro.
 
 ### Git worktrees — one per agent
 
