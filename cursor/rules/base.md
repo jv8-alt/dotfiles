@@ -17,3 +17,4 @@
 - Typecheck after each series of edits
 - Small commits, one concern each
 - One branch = one concern = one PR; never bundle unrelated changes
+- Any plan that changes structure (components, boundaries, protocols, integrations) includes a target-architecture diagram and flow diagram(s) for key runtime paths (Mermaid), presented before implementation — not just a task list

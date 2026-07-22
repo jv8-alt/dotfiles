@@ -20,6 +20,21 @@ For high-uncertainty areas, prefer a **throwaway spike first** to discover the
 real prerequisite structure, then plan; and mark exploratory nodes with a
 **risk flag** in the node table so they're sequenced early or conservatively.
 
+**Architecture & flow diagrams are part of the plan, not optional garnish.**
+Whenever the work changes structure (new components, boundaries, protocols,
+integrations), `MIKADO.md` includes, alongside the dependency graph:
+
+- a **target-architecture diagram** — components and their boundaries in the
+  end state, with each component labeled with the branch/node that builds it
+  (this is what makes branch boundaries and trunk contracts *visible* rather
+  than asserted);
+- a **flow diagram** for each key runtime path (e.g. request → auth → handler →
+  store), since flows cross branch boundaries and are where contract
+  mismatches surface.
+
+The dependency graph says *in what order*; the architecture diagram says *what*;
+the flow diagram says *how it behaves*. A plan with only the first is unreviewable.
+
 ### 1. Build the graph
 
 - The **root** is the goal (the user's requested outcome).
@@ -181,6 +196,7 @@ Balance check before opening the PR: if Part 2 is longer than Part 1 (diagram ex
 When asked to plan, produce before any implementation:
 
 - [ ] Design-decisions section (§0) — all load-bearing choices written down and decided
+- [ ] Target-architecture diagram (components labeled with building branch/node) and flow diagram(s) for key runtime paths, when structure changes
 - [ ] Mermaid graph with stable node IDs, including all known cross-branch edges
 - [ ] Trunk nodes identified (shared interfaces/contracts) and sequenced before parallel work
 - [ ] Node table (ID, description, files/modules touched, acceptance criterion, risk flag, est. PR size) — one line per node
@@ -198,7 +214,7 @@ When asked to plan, produce before any implementation:
 - [ ] Every node has an acceptance criterion and every trunk contract specifies failure modes.
 - [ ] Convergence nodes are single-concept (wire OR guard OR docs) — a convergence PR that does three things is three nodes.
 
-**Then stop.** Present in chat: the Mermaid graph, the node table (with acceptance criteria), the branch → agent assignments, and anything the red-team pass changed. Do NOT create worktrees, spawn agents, or start any node until the user approves the plan. If the user requests changes, revise and re-present. The same gate applies to plan revisions that restructure branches or change agent assignments (discovered-edge bookkeeping inside a node PR is exempt).
+**Then stop.** Present in chat: the Mermaid graph, the architecture/flow diagrams (when structure changes), the node table (with acceptance criteria), the branch → agent assignments, and anything the red-team pass changed. Do NOT create worktrees, spawn agents, or start any node until the user approves the plan. If the user requests changes, revise and re-present. The same gate applies to plan revisions that restructure branches or change agent assignments (discovered-edge bookkeeping inside a node PR is exempt).
 
 ### 7. Narrate the execution — don't batch-ship
 
